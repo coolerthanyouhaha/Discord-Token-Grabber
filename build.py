@@ -12,6 +12,7 @@ title = Fore.LIGHTRED_EX + """
 ╶┬╴╭─╮╷╭ ╭─╴╭╮╷   ╭─╴╭─╮╭─╮╭╮ ╭╮ ╭─╴╭─╮
  │ │ │├┴╮├╴ │╰┤   │╶╮├┬╯├─┤├┴╮├┴╮├╴ ├┬╯
  ╵ ╰─╯╵ ╵╰─╴╵ ╵   ╰─╯╵╰╴╵ ╵╰─╯╰─╯╰─╴╵╰╴
+ by literallytim
 """ + Style.RESET_ALL
 
 print(title)
